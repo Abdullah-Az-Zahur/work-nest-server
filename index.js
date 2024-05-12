@@ -80,6 +80,36 @@ async function run() {
       res.send(result);
     });
 
+    // update a job in db
+    app.put("/job/:id", async (req, res) => {
+      const id = req.params.id;
+      const jobData = req.body;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...jobData,
+        },
+      };
+      const result = await jobsCollection.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
+
+    // get all bids for a user by email from db
+    app.get("/my-bids/:email",  async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await bidsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    //Get all bid requests from db for job owner
+    app.get("/bid-requests/:email",  async (req, res) => {
+      const email = req.params.email;
+      const query = { "buyer.email": email };
+      const result = await bidsCollection.find(query).toArray();
+      res.send(result);
+    });
     // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
