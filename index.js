@@ -6,7 +6,6 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const app = express();
 const port = process.env.PORT || 5000;
-app.use(express.json());
 
 // middleware
 app.use(
@@ -16,6 +15,10 @@ app.use(
     optionsSuccessStatus: 200,
   })
 );
+
+app.use(express.json());
+app.use(cors(corsOptions));
+app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nbrjeuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -53,16 +56,16 @@ async function run() {
     });
 
     // Clear token on logout
-    app.get('/logout', (req, res) => {
+    app.get("/logout", (req, res) => {
       res
-        .clearCookie('token', {
+        .clearCookie("token", {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
           maxAge: 0,
         })
-        .send({ success: true })
-    })
+        .send({ success: true });
+    });
 
     // get all jobs
     app.get("/jobs", async (req, res) => {
