@@ -40,8 +40,8 @@ async function run() {
     // jwt generate
     app.post("/jwt", async (req, res) => {
       const email = req.body;
-      const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "365d",
+      const token = jwt.sign(email, process.env.ACCESS_TOKEN, {
+        expiresIn: "1d",
       });
       res
         .cookie("token", token, {
@@ -51,6 +51,19 @@ async function run() {
         })
         .send({ success: true });
     });
+
+    // Clear token on logout
+    app.get('/logout', (req, res) => {
+      res
+        .clearCookie('token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+          maxAge: 0,
+        })
+        .send({ success: true })
+    })
+
     // get all jobs
     app.get("/jobs", async (req, res) => {
       const result = await jobsCollection.find().toArray();
