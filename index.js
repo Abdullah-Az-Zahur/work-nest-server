@@ -17,8 +17,26 @@ app.use(
 );
 
 app.use(express.json());
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 app.use(cookieParser());
+
+// verify jwt middleware
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) return res.status(401).send({ message: "unauthorized access" });
+  if (token) {
+    jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+      if (err) {
+        console.log(err);
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      console.log(decoded);
+
+      req.user = decoded;
+      next();
+    });
+  }
+};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nbrjeuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -82,14 +100,39 @@ async function run() {
       res.send(result);
     });
 
-    // set apply data
+    // save apply job data
     app.post("/bid", async (req, res) => {
       const bidData = req.body;
+
+      // check if its a duplicate request
+      const query = {
+        email: bidData.email,
+        jobId: bidData.jobId,
+      };
+      const alreadyApplied = await bidsCollection.findOne(query);
+      console.log(alreadyApplied);
+      if (alreadyApplied) {
+        return res
+          .status(400)
+          .send("You have already placed a request on this job.");
+      }
+
       const result = await bidsCollection.insertOne(bidData);
+
+      // update bid count in jobs collection
+      const updateDoc = {
+        $inc: { bid_count: 1 },
+      };
+      const jobQuery = { _id: new ObjectId(bidData.jobId) };
+      const updateBidCount = await jobsCollection.updateOne(
+        jobQuery,
+        updateDoc
+      );
+      console.log(updateBidCount);
       res.send(result);
     });
 
-    // set job data
+    // set new added job data
     app.post("/job", async (req, res) => {
       const jobData = req.body;
       const result = await jobsCollection.insertOne(jobData);
@@ -97,8 +140,12 @@ async function run() {
     });
 
     // get all jobs posted by a specific user
-    app.get("/jobs/:email", async (req, res) => {
+    app.get("/jobs/:email", verifyToken, async (req, res) => {
+      const tokenEmail = req.user.email;
       const email = req.params.email;
+      if (tokenEmail !== email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
       const query = { "buyer.email": email };
       const result = await jobsCollection.find(query).toArray();
       res.send(result);
@@ -113,7 +160,7 @@ async function run() {
     });
 
     // update a job in db
-    app.put("/job/:id", async (req, res) => {
+    app.put("/job/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const jobData = req.body;
       const query = { _id: new ObjectId(id) };
@@ -128,7 +175,7 @@ async function run() {
     });
 
     // get all bids for a user by email from db
-    app.get("/my-bids/:email", async (req, res) => {
+    app.get("/my-bids/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const result = await bidsCollection.find(query).toArray();
@@ -136,7 +183,7 @@ async function run() {
     });
 
     //Get all bid requests from db for job owner
-    app.get("/bid-requests/:email", async (req, res) => {
+    app.get("/bid-requests/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { "buyer.email": email };
       const result = await bidsCollection.find(query).toArray();
