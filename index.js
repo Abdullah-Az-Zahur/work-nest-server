@@ -10,7 +10,12 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://job-nest-391e1.web.app",
+      "https://job-nest-391e1.firebaseapp.com",
+    ],
     credentials: true,
     optionsSuccessStatus: 200,
   })
@@ -39,6 +44,7 @@ const verifyToken = (req, res, next) => {
 };
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nbrjeuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -69,6 +75,10 @@ async function run() {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+
+          // httpOnly: true,
+          // secure: true,
+          // sameSite: "none",
         })
         .send({ success: true });
     });
@@ -140,12 +150,12 @@ async function run() {
     });
 
     // get all jobs posted by a specific user
-    app.get("/jobs/:email", verifyToken, async (req, res) => {
-      const tokenEmail = req.user.email;
+    app.get("/jobs/:email",  async (req, res) => {
+      // const tokenEmail = req.user.email;
       const email = req.params.email;
-      if (tokenEmail !== email) {
-        return res.status(403).send({ message: "forbidden access" });
-      }
+      // if (tokenEmail !== email) {
+      //   return res.status(403).send({ message: "forbidden access" });
+      // }
       const query = { "buyer.email": email };
       const result = await jobsCollection.find(query).toArray();
       res.send(result);
@@ -175,7 +185,7 @@ async function run() {
     });
 
     // get all bids for a user by email from db
-    app.get("/my-bids/:email", verifyToken, async (req, res) => {
+    app.get("/my-bids/:email",  async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const result = await bidsCollection.find(query).toArray();
@@ -183,7 +193,7 @@ async function run() {
     });
 
     //Get all bid requests from db for job owner
-    app.get("/bid-requests/:email", verifyToken, async (req, res) => {
+    app.get("/bid-requests/:email",  async (req, res) => {
       const email = req.params.email;
       const query = { "buyer.email": email };
       const result = await bidsCollection.find(query).toArray();
