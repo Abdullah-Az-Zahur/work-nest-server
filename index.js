@@ -55,8 +55,8 @@ async function run() {
     // await client.connect();
     // Send a ping to confirm a successful connection
 
-    const jobsCollection = client.db("workNestDB").collection("jobs");
-    const bidsCollection = client.db("workNestDB").collection("bids");
+    const jobsCollection = client.db("jobNestDB").collection("jobs");
+    const bidsCollection = client.db("jobNestDB").collection("bids");
 
     // jwt generate
     app.post("/jwt", async (req, res) => {
@@ -160,7 +160,7 @@ async function run() {
     });
 
     // update a job in db
-    app.put("/job/:id", verifyToken, async (req, res) => {
+    app.put("/job/:id", async (req, res) => {
       const id = req.params.id;
       const jobData = req.body;
       const query = { _id: new ObjectId(id) };
@@ -200,6 +200,43 @@ async function run() {
       };
       const result = await bidsCollection.updateOne(query, updateDoc);
       res.send(result);
+    });
+
+    // Get all jobs data from db for pagination
+    app.get("/all-jobs", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) - 1;
+      const filter = req.query.filter;
+      const sort = req.query.sort;
+      const search = req.query.search;
+      console.log(size, page);
+
+      let query = {
+        job_title: { $regex: search, $options: "i" },
+      };
+      if (filter) query.category = filter;
+      let options = {};
+      if (sort) options = { sort: { deadline: sort === "asc" ? 1 : -1 } };
+      const result = await jobsCollection
+        .find(query, options)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+
+      res.send(result);
+    });
+
+    // Get all jobs data count from db
+    app.get("/jobs-count", async (req, res) => {
+      const filter = req.query.filter;
+      const search = req.query.search;
+      let query = {
+        job_title: { $regex: search, $options: "i" },
+      };
+      if (filter) query.category = filter;
+      const count = await jobsCollection.countDocuments(query);
+
+      res.send({ count });
     });
 
     // await client.db("admin").command({ ping: 1 });
